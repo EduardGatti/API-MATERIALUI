@@ -143,21 +143,43 @@
     }
   });
 
-  app.get('/notas/media/:aluno_id', async (req, res) => {
+app.get('/notas/media/:aluno_id/:disciplina_nome', async (req, res) => {
     try {
-      const [notas] = await db.execute(
-        'SELECT nota FROM notas WHERE aluno_id = ?',
-        [req.params.aluno_id]
-      );
-      if (notas.length === 0) return res.status(404).json({ error: 'Notas não encontradas' });
-      const soma = notas.reduce((acc, n) => acc + parseFloat(n.nota), 0);
-      const media = soma / notas.length;
-      const passou = media >= 6;
-      res.json({ media: media.toFixed(2), passou });
+        const [disciplina] = await db.execute(
+            'SELECT id FROM disciplinas WHERE nome = ?',
+            [req.params.disciplina_nome]
+        );
+        
+        if (disciplina.length === 0) {
+            return res.status(404).json({ error: 'Disciplina não encontrada' });
+        }
+
+        const disciplina_id = disciplina[0].id;
+
+        const [notas] = await db.execute(
+            'SELECT nota FROM notas WHERE aluno_id = ? AND disciplina_id = ?',
+            [req.params.aluno_id, disciplina_id]
+        );
+
+        if (notas.length === 0) {
+            return res.status(404).json({ 
+                error: 'Nenhuma nota encontrada para este aluno na disciplina especificada' 
+            });
+        }
+
+        const soma = notas.reduce((acc, n) => acc + parseFloat(n.nota), 0);
+        const media = soma / notas.length;
+        const passou = media >= 6;
+        
+        res.json({ 
+            disciplina: req.params.disciplina_nome,
+            media: media.toFixed(2), 
+            passou 
+        });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
-  });
+});
 
   const PORT = 3001;
   app.listen(PORT, () => {
